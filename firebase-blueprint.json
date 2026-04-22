@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "Design": {
+      "title": "Design",
+      "description": "A saved rhinestone project design with all its settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The ID of the user who owns this design." },
+        "name": { "type": "string", "description": "The display name of the design." },
+        "unit": { "type": "string", "enum": ["mm", "in"], "description": "Measurement unit." },
+        "shapeId": { "type": "string", "description": "The selected shape ID." },
+        "stoneSizeLabel": { "type": "string", "description": "The label of the selected stone size." },
+        "fillModeId": { "type": "string", "enum": ["honeycomb", "grid"], "description": "The selected fill mode." },
+        "gap": { "type": "number", "description": "Inter-stone gap in mm." },
+        "buffer": { "type": "number", "description": "Extra buffer percentage." },
+        "width": { "type": "number", "description": "Width or length dimension." },
+        "height": { "type": "number", "description": "Height dimension." },
+        "diameter": { "type": "number", "description": "Diameter for circular shapes." },
+        "customArea": { "type": "number", "description": "Area for custom shapes." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["uid", "name", "unit", "shapeId", "stoneSizeLabel", "fillModeId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/designs/{designId}": {
+      "schema": "Design",
+      "description": "Collection of saved stone designs."
+    }
+  }
+}

@@ -1,0 +1,103 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: designs
+// Document ID: auto-generated or user-provided
+// Fields:
+//   - uid: string (required) - owner's user ID
+//   - name: string (required, 1-100 chars) - design name
+//   - unit: string (required, 'mm' or 'in')
+//   - shapeId: string (required)
+//   - stoneSizeLabel: string (required)
+//   - fillModeId: string (required, 'honeycomb' or 'grid')
+//   - gap: number (required)
+//   - buffer: number (required)
+//   - width: number (optional)
+//   - height: number (optional)
+//   - diameter: number (optional)
+//   - customArea: number (optional)
+//   - createdAt: string (required, ISO 8601) - creation timestamp
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isOwner(resource.data.uid);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "alano@alano.one" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Domain Validators
+
+    function isValidDesign(data) {
+      return hasRequiredFields(['uid', 'name', 'unit', 'shapeId', 'stoneSizeLabel', 'fillModeId', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.unit in ['mm', 'in'] &&
+             data.fillModeId in ['honeycomb', 'grid'] &&
+             isValidDateString(data.createdAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /designs/{designId} {
+      // Only owners or admins can read
+      allow read: if isDocOwner() || isAdmin();
+      
+      // Only authenticated users can create their own designs
+      allow create: if isAuthenticated() && isValidDesign(request.resource.data);
+      
+      // Only owners can update their designs
+      allow update: if isDocOwner() && isValidDesign(request.resource.data) && (request.resource.data.uid == resource.data.uid);
+      
+      // Only owners or admins can delete
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // Users can only create their own profile as a 'user' role
+      allow create: if isOwner(userId) && request.resource.data.role == 'user';
+      // Only admins can update user roles
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+    }
+  }
+}
